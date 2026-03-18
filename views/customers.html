@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Manage Customers - Game Store</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="nav">
+        <a href="index.html">Home</a>
+        <a href="products.html">Products</a>
+        <a href="customers.html">Customers</a>
+        <a href="employees.html">Employees</a>
+        <a href="sales.html">Sales</a>
+        <a href="product-sales.html">Sale Items</a>
+        <form action="/reset" method="POST" class="reset-form" onsubmit="return confirm('Reset all database tables and data?');">
+            <button type="submit" class="reset-btn">Reset Database</button>
+        </form>
+    </div>
+
+    <h1>Manage Customers</h1>
+
+    <h2>Add New Customer</h2>
+    <form id="add-customer-form">
+        <label>First Name: <input type="text" name="firstName"></label><br>
+        <label>Last Name: <input type="text" name="lastName"></label><br>
+        <label>Email: <input type="email" name="email"></label><br>
+        <label>Phone: <input type="tel" name="phone" maxlength="10" pattern="[0-9]{10}"></label><br>
+        <p><em>Note: Either email or phone is required</em></p>
+        <button type="submit">Add Customer</button>
+    </form>
+
+    <h2>Update Customer</h2>
+    <form id="update-customer-form">
+        <label>Customer ID: <input type="number" id="update-customer-id" required onchange="loadCustomerById()"></label><br>
+        <label>First Name: <input type="text" id="update-first-name"></label><br>
+        <label>Last Name: <input type="text" id="update-last-name"></label><br>
+        <label>Email: <input type="email" id="update-email"></label><br>
+        <label>Phone: <input type="tel" id="update-phone" maxlength="10" pattern="[0-9]{10}"></label><br>
+        <p><em>Note: Either email or phone is required</em></p>
+        <button type="submit">Update Customer</button>
+    </form>
+
+    <h2>All Customers</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Reward Balance</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td colspan="7" style="text-align: center;">Loading customers...</td>
+            </tr>
+        </tbody>
+    </table>
+
+<script>
+let allCustomers = [];
+
+window.addEventListener('DOMContentLoaded', async function() {
+    loadCustomers();
+});
+
+async function loadCustomers() {
+    try {
+        const response = await fetch('/api/customers');
+        const customers = await response.json();
+        allCustomers = customers;
+        const tbody = document.querySelector('table tbody');
+        
+        tbody.innerHTML = '';
+        
+        if (customers.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No customers. Click RESET.</td></tr>';
+            return;
+        }
+        
+        customers.forEach(customer => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${customer.customer_ID}</td>
+                <td>${customer.first_name || '—'}</td>
+                <td>${customer.last_name || '—'}</td>
+                <td>${customer.email || '—'}</td>
+                <td>${customer.phone || '—'}</td>
+                <td>$${parseFloat(customer.reward_balance).toFixed(2)}</td>
+                <td>
+                    <button onclick="updateForm(${customer.customer_ID}, '${(customer.first_name || '').replace(/'/g, "\\'")}', '${(customer.last_name || '').replace(/'/g, "\\'")}', '${customer.email || ''}', '${customer.phone || ''}')">Edit</button> 
+                    <button onclick="deleteCustomer(${customer.customer_ID})">Delete</button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    } catch (error) {
+        console.error('Error:', error);
+        const tbody = document.querySelector('table tbody');
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: red;">Error loading customers</td></tr>';
+    }
+}
+
+async function loadCustomerById() {
+    const customerId = parseInt(document.getElementById('update-customer-id').value);
+    
+    if (!customerId || isNaN(customerId)) {
+        return;
+    }
+    
+    let customer = allCustomers.find(c => c.customer_ID === customerId);
+    
+    if (!customer) {
+        try {
+            const response = await fetch('/api/customers');
+            const customers = await response.json();
+            allCustomers = customers;
+            customer = customers.find(c => c.customer_ID === customerId);
+        } catch (error) {
+            console.error('Error fetching customers:', error);
+            alert('Error loading customer data');
+            return;
+        }
+    }
+    
+    if (customer) {
+        updateForm(
+            customer.customer_ID,
+            customer.first_name || '',
+            customer.last_name || '',
+            customer.email || '',
+            customer.phone || ''
+        );
+    } else {
+        alert(`Customer ID ${customerId} not found`);
+        document.getElementById('update-first-name').value = '';
+        document.getElementById('update-last-name').value = '';
+        document.getElementById('update-email').value = '';
+        document.getElementById('update-phone').value = '';
+    }
+}
+
+function updateForm(customerId, firstName, lastName, email, phone) {
+    document.getElementById('update-customer-id').value = customerId;
+    document.getElementById('update-first-name').value = firstName;
+    document.getElementById('update-last-name').value = lastName;
+    document.getElementById('update-email').value = email;
+    document.getElementById('update-phone').value = phone;
+    document.getElementById('update-customer-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+document.getElementById('add-customer-form').addEventListener('submit', async function(event) {
+    event.preventDefault();
+
+    const firstName = this.firstName.value || null;
+    const lastName = this.lastName.value || null;
+    const email = this.email.value || null;
+    const phone = this.phone.value || null;
+
+    if (!email && !phone) {
+        alert('Please provide either email or phone number');
+        return;
+    }
+
+    const newCustomer = {
+        first_name: firstName,
+        last_name: lastName,
+        email: email,
+        phone: phone
+    };
+
+    try {
+        const response = await fetch('/api/customers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newCustomer)
+        });
+
+        if (response.ok) {
+            alert('Customer added successfully!');
+            this.reset();
+            loadCustomers();
+        } else {
+            const data = await response.json();
+            alert('Error adding customer: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error adding customer');
+    }
+});
+
+document.getElementById('update-customer-form').addEventListener('submit', async function(event) {
+    event.preventDefault();
+
+    const customerId = document.getElementById('update-customer-id').value;
+    const firstName = document.getElementById('update-first-name').value || null;
+    const lastName = document.getElementById('update-last-name').value || null;
+    const email = document.getElementById('update-email').value || null;
+    const phone = document.getElementById('update-phone').value || null;
+
+    if (!email && !phone) {
+        alert('Please provide either email or phone number');
+        return;
+    }
+
+    const updatedCustomer = {
+        first_name: firstName,
+        last_name: lastName,
+        email: email,
+        phone: phone
+    };
+
+    try {
+        const response = await fetch(`/api/customers/${customerId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedCustomer)
+        });
+
+        if (response.ok) {
+            alert('Customer updated successfully!');
+            loadCustomers();
+        } else {
+            const data = await response.json();
+            alert('Error updating customer: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error updating customer');
+    }
+});
+
+async function deleteCustomer(customerId) {
+    if (!confirm(`Are you sure you want to delete Customer ID ${customerId}?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/customers/${customerId}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            alert('Customer deleted successfully!');
+            loadCustomers();
+        } else {
+            const data = await response.json();
+            alert('Error deleting customer: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error deleting customer');
+    }
+}
+</script>
+</body>
+</html>

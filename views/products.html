@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Manage Products - Game Store</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="nav">
+        <a href="index.html">Home</a>
+        <a href="products.html">Products</a>
+        <a href="customers.html">Customers</a>
+        <a href="employees.html">Employees</a>
+        <a href="sales.html">Sales</a>
+        <a href="product-sales.html">Sale Items</a>
+        <form action="/reset" method="POST" class="reset-form" onsubmit="return confirm('Reset all database tables and data?');">
+            <button type="submit" class="reset-btn">Reset Database</button>
+        </form>
+    </div>
+
+    <h1>Manage Products</h1>
+
+    <h2>Add New Product</h2>
+    <form id="add-product-form">
+        <label>Product Name: <input type="text" name="productName" required></label><br>
+        <label>Platform: 
+            <select name="platform" required>
+                <option value="Playstation">Playstation</option>
+                <option value="Xbox">Xbox</option>
+                <option value="Nintendo">Nintendo</option>
+                <option value="PC">PC</option>
+                <option value="Board Game">Board Game</option>
+                <option value="Card Game">Card Game</option>
+                <option value="Other">Other</option>
+            </select>
+        </label><br>
+        <label>Genre: 
+            <select name="genre" required>
+                <option value="Action">Action</option>
+                <option value="Adventure">Adventure</option>
+                <option value="RPG">RPG</option>
+                <option value="Shooter">Shooter</option>
+                <option value="Sports">Sports</option>
+                <option value="Simulation">Simulation</option>
+                <option value="Puzzle">Puzzle</option>
+                <option value="Horror">Horror</option>
+                <option value="Fighting">Fighting</option>
+                <option value="Racing">Racing</option>
+                <option value="Sandbox">Sandbox</option>
+                <option value="Survival">Survival</option>
+                <option value="Strategy">Strategy</option>
+                <option value="Party">Party</option>
+                <option value="Other">Other</option>
+            </select>
+        </label><br>
+        <label>Price: <input type="number" name="price" step="0.01" min="0" required></label><br>
+        <label>Quality: 
+            <select name="quality" required>
+                <option value="Near Mint">Near Mint</option>
+                <option value="Excellent">Excellent</option>
+                <option value="Average">Average</option>
+                <option value="Poor">Poor</option>
+                <option value="Unsellable">Unsellable</option>
+            </select>
+        </label><br>
+        <label>Quantity: <input type="number" name="quantity" min="0" required></label><br>
+        <button type="submit">Add Product</button>
+    </form>
+
+    <h2>Update Product</h2>
+    <form id="update-product-form">
+        <label>Product ID: <input type="number" id="update-product-id" required onchange="loadProductById()"></label><br>
+
+        <label>Product Name: <input type="text" id="update-product-name" required></label><br>
+
+        <label>Platform:
+            <select id="update-platform" required>
+                <option value="Playstation">Playstation</option>
+                <option value="Xbox">Xbox</option>
+                <option value="Nintendo">Nintendo</option>
+                <option value="PC">PC</option>
+                <option value="Board Game">Board Game</option>
+                <option value="Card Game">Card Game</option>
+                <option value="Other">Other</option>
+            </select>
+        </label><br>
+
+        <label>Genre:
+            <select id="update-genre" required>
+                <option value="Action">Action</option>
+                <option value="Adventure">Adventure</option>
+                <option value="RPG">RPG</option>
+                <option value="Shooter">Shooter</option>
+                <option value="Sports">Sports</option>
+                <option value="Simulation">Simulation</option>
+                <option value="Puzzle">Puzzle</option>
+                <option value="Horror">Horror</option>
+                <option value="Fighting">Fighting</option>
+                <option value="Racing">Racing</option>
+                <option value="Sandbox">Sandbox</option>
+                <option value="Survival">Survival</option>
+                <option value="Strategy">Strategy</option>
+                <option value="Party">Party</option>
+                <option value="Other">Other</option>
+            </select>
+        </label><br>
+
+        <label>Price: <input type="number" id="update-price" step="0.01" min="0" required></label><br>
+
+        <label>Quality:
+            <select id="update-quality" required>
+                <option value="Near Mint">Near Mint</option>
+                <option value="Excellent">Excellent</option>
+                <option value="Average">Average</option>
+                <option value="Poor">Poor</option>
+                <option value="Unsellable">Unsellable</option>
+            </select>
+        </label><br>
+
+        <label>Quantity: <input type="number" id="update-quantity" min="0" required></label><br>
+
+        <button type="submit">Update Product</button>
+    </form>
+
+    <h2>All Products</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Product ID</th>
+                <th>Product Name</th>
+                <th>Platform</th>
+                <th>Genre</th>
+                <th>Price</th>
+                <th>Quality</th>
+                <th>Quantity</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td colspan="8" style="text-align: center;">Loading products...</td>
+            </tr>
+        </tbody>
+    </table>
+<script>
+let allProducts = [];
+
+window.addEventListener('DOMContentLoaded', async function() {
+    try {
+        const response = await fetch('/api/products');
+        const products = await response.json();
+        allProducts = products;
+        const tbody = document.querySelector('table tbody');
+
+        tbody.innerHTML = '';
+        
+        if (products.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No products. Click RESET.</td></tr>';
+            return;
+        }
+        
+        products.forEach(product => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${product.product_ID}</td>
+                <td>${product.product_name}</td>
+                <td>${product.platform}</td>
+                <td>${product.genre}</td>
+                <td>$${parseFloat(product.price).toFixed(2)}</td>
+                <td>${product.quality}</td>
+                <td>${product.quantity}</td>
+                <td>
+                    <button onclick="UpdateForm(
+                        ${product.product_ID},
+                        '${product.product_name.replace(/'/g, "\\'")}',
+                        '${product.platform}',
+                        '${product.genre}',
+                        ${product.price},
+                        '${product.quality}',
+                        ${product.quantity}
+                    )">Edit</button> 
+                    <button onclick="deleteProduct(${product.product_ID})">Delete</button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    } catch (error) {
+        console.error('Error:', error);
+    }
+});
+
+async function loadProductById() {
+    const productId = parseInt(document.getElementById('update-product-id').value);
+    
+    if (!productId || isNaN(productId)) {
+        return;
+    }
+    
+    let product = allProducts.find(p => p.product_ID === productId);
+    
+    if (!product) {
+        try {
+            const response = await fetch('/api/products');
+            const products = await response.json();
+            allProducts = products; // Update cache
+            product = products.find(p => p.product_ID === productId);
+        } catch (error) {
+            console.error('Error fetching products:', error);
+            alert('Error loading product data');
+            return;
+        }
+    }
+    
+    if (product) {
+        UpdateForm(
+            product.product_ID,
+            product.product_name,
+            product.platform,
+            product.genre,
+            product.price,
+            product.quality,
+            product.quantity
+        );
+    } else {
+        alert(`Product ID ${productId} not found`);
+        document.getElementById('update-product-name').value = '';
+        document.getElementById('update-platform').value = 'Playstation';
+        document.getElementById('update-genre').value = 'Action';
+        document.getElementById('update-price').value = '';
+        document.getElementById('update-quality').value = 'Near Mint';
+        document.getElementById('update-quantity').value = '';
+    }
+}
+
+function UpdateForm(productId, productName, platform, genre, price, quality, quantity) {
+    document.getElementById('update-product-id').value = productId;
+    document.getElementById('update-product-name').value = productName;
+    document.getElementById('update-platform').value = platform;
+    document.getElementById('update-genre').value = genre;
+    document.getElementById('update-price').value = price;
+    document.getElementById('update-quality').value = quality;
+    document.getElementById('update-quantity').value = quantity;
+}
+
+document.getElementById('add-product-form').addEventListener('submit', async function(event) {
+    event.preventDefault();
+
+    const newProduct = {
+        product_name: document.querySelector('[name="productName"]').value,
+        platform: document.querySelector('[name="platform"]').value,
+        genre: document.querySelector('[name="genre"]').value,
+        price: document.querySelector('[name="price"]').value,
+        quality: document.querySelector('[name="quality"]').value,
+        quantity: document.querySelector('[name="quantity"]').value
+    };
+
+    const response = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newProduct)
+    });
+
+    if (response.ok) {
+        alert('Product added!');
+        location.reload();
+    } else {
+        alert('Error adding product');
+    }
+});
+
+document.getElementById('update-product-form').addEventListener('submit', async function(event) {
+    event.preventDefault();
+
+    const productId = document.getElementById('update-product-id').value;
+
+    const updatedProduct = {
+        product_name: document.getElementById('update-product-name').value,
+        platform: document.getElementById('update-platform').value,
+        genre: document.getElementById('update-genre').value,
+        price: document.getElementById('update-price').value,
+        quality: document.getElementById('update-quality').value,
+        quantity: document.getElementById('update-quantity').value
+    };
+
+    const response = await fetch(`/api/products/${productId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedProduct)
+    });
+
+    if (response.ok) {
+        alert('Product updated!');
+        location.reload();
+    } else {
+        alert('Error updating product');
+    }
+});
+
+async function deleteProduct(productId) {
+    if (!confirm(`Are you sure you want to delete Product ID ${productId}?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/products/${productId}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            alert('Product deleted successfully!');
+            location.reload();
+        } else {
+            alert('Error deleting product');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error deleting product');
+    }
+}
+</script>
+</body>
+</html>

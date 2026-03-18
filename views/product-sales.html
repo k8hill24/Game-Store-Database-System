@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sale Line Items - Game Store</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="nav">
+        <a href="index.html">Home</a>
+        <a href="products.html">Products</a>
+        <a href="customers.html">Customers</a>
+        <a href="employees.html">Employees</a>
+        <a href="sales.html">Sales</a>
+        <a href="product-sales.html">Sale Items</a>
+        <form action="/reset" method="POST" class="reset-form" onsubmit="return confirm('Reset all database tables and data?');">
+            <button type="submit" class="reset-btn">Reset Database</button>
+        </form>
+    </div>
+
+    <h1>Product Sale Line Items</h1>
+
+    <h2>Add Product to Sale</h2>
+    <form id="add-product-sale-form">
+        <label>Sale ID: 
+            <select name="saleId" required>
+                <option value="">Loading sales...</option>
+            </select>
+        </label><br>
+        <label>Product: 
+            <select name="productId" required>
+                <option value="">Loading products...</option>
+            </select>
+        </label><br>
+        <label>Quantity: <input type="number" name="quantity" min="1" required></label><br>
+        <label>Unit Price: <input type="number" name="unitPrice" step="0.01" min="0" required></label><br>
+        <button type="submit">Add to Sale</button>
+    </form>
+
+    <h2>Update Sale Item</h2>
+    <form id="update-product-sale-form">
+        <label>Sale Item ID: <input type="number" id="update-sale-item-id" required onchange="loadProductSaleById()"></label><br>
+        <label>Product: 
+            <select id="update-product-id" required>
+                <option value="">Loading products...</option>
+            </select>
+        </label><br>
+        <label>Quantity: <input type="number" id="update-quantity" min="1" required></label><br>
+        <label>Unit Price: <input type="number" id="update-unit-price" step="0.01" min="0" required></label><br>
+        <button type="submit">Update Sale Item</button>
+    </form>
+
+    <h2>All Sale Line Items</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Item ID</th>
+                <th>Sale ID</th>
+                <th>Product ID</th>
+                <th>Product Name</th>
+                <th>Platform</th>
+                <th>Quantity</th>
+                <th>Unit Price</th>
+                <th>Line Total</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td colspan="9" style="text-align: center;">Loading sale items...</td>
+            </tr>
+        </tbody>
+    </table>
+
+<script>
+let allProductSales = [];
+
+window.addEventListener('DOMContentLoaded', async function() {
+    loadProductSales();
+    loadSalesDropdown();
+    loadProductsDropdown();
+    loadProductsForUpdate();
+});
+
+async function loadProductSales() {
+    try {
+        const response = await fetch('/api/product-sales');
+        const productSales = await response.json();
+        allProductSales = productSales;
+        const tbody = document.querySelector('table tbody');
+        
+        tbody.innerHTML = '';
+        
+        if (productSales.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">No sale items. Click RESET.</td></tr>';
+        } else {
+            productSales.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.sale_item_ID}</td>
+                    <td>${item.sale_ID}</td>
+                    <td>${item.product_ID}</td>
+                    <td>${item.product_name}</td>
+                    <td>${item.platform}</td>
+                    <td>${item.quantity}</td>
+                    <td>$${parseFloat(item.unit_price).toFixed(2)}</td>
+                    <td>$${parseFloat(item.line_total).toFixed(2)}</td>
+                    <td>
+                        <button onclick="updateForm(${item.sale_item_ID}, ${item.product_ID}, ${item.quantity}, ${item.unit_price})">Edit</button> 
+                        <button onclick="deleteProductSale(${item.sale_item_ID})">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        const tbody = document.querySelector('table tbody');
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: red;">Error loading sale items</td></tr>';
+    }
+}
+
+async function loadProductSaleById() {
+    const saleItemId = parseInt(document.getElementById('update-sale-item-id').value);
+    
+    if (!saleItemId || isNaN(saleItemId)) {
+        return;
+    }
+    
+    let item = allProductSales.find(ps => ps.sale_item_ID === saleItemId);
+    
+    if (!item) {
+        try {
+            const response = await fetch('/api/product-sales');
+            const productSales = await response.json();
+            allProductSales = productSales;
+            item = productSales.find(ps => ps.sale_item_ID === saleItemId);
+        } catch (error) {
+            console.error('Error fetching product sales:', error);
+            alert('Error loading sale item data');
+            return;
+        }
+    }
+    
+    if (item) {
+        updateForm(
+            item.sale_item_ID,
+            item.product_ID,
+            item.quantity,
+            item.unit_price
+        );
+    } else {
+        alert(`Sale Item ID ${saleItemId} not found`);
+        document.getElementById('update-product-id').value = '';
+        document.getElementById('update-quantity').value = '';
+        document.getElementById('update-unit-price').value = '';
+    }
+}
+
+async function loadSalesDropdown() {
+    try {
+        const response = await fetch('/api/sales');
+        const sales = await response.json();
+        const saleSelect = document.querySelector('select[name="saleId"]');
+        
+        saleSelect.innerHTML = '<option value="">-- Select Sale --</option>';
+        sales.forEach(sale => {
+            const option = document.createElement('option');
+            option.value = sale.sale_ID;
+            const saleDate = new Date(sale.sale_date).toLocaleDateString();
+            option.textContent = `Sale #${sale.sale_ID} - ${saleDate} - $${parseFloat(sale.total_price).toFixed(2)}`;
+            saleSelect.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading sales:', error);
+    }
+}
+
+async function loadProductsDropdown() {
+    try {
+        const response = await fetch('/api/products');
+        const products = await response.json();
+        const productSelect = document.querySelector('select[name="productId"]');
+        
+        productSelect.innerHTML = '<option value="">-- Select Product --</option>';
+        products.forEach(product => {
+            const option = document.createElement('option');
+            option.value = product.product_ID;
+            option.textContent = `${product.product_name} (${product.platform}) - $${parseFloat(product.price).toFixed(2)}`;
+            productSelect.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading products:', error);
+    }
+}
+
+async function loadProductsForUpdate() {
+    try {
+        const response = await fetch('/api/products');
+        const products = await response.json();
+        const productSelect = document.getElementById('update-product-id');
+        
+        productSelect.innerHTML = '<option value="">-- Select Product --</option>';
+        products.forEach(product => {
+            const option = document.createElement('option');
+            option.value = product.product_ID;
+            option.textContent = `${product.product_name} (${product.platform}) - $${parseFloat(product.price).toFixed(2)}`;
+            productSelect.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading products:', error);
+    }
+}
+
+function updateForm(saleItemId, productId, quantity, unitPrice) {
+    document.getElementById('update-sale-item-id').value = saleItemId;
+    document.getElementById('update-product-id').value = productId;
+    document.getElementById('update-quantity').value = quantity;
+    document.getElementById('update-unit-price').value = unitPrice;
+    document.getElementById('update-product-sale-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+document.getElementById('add-product-sale-form').addEventListener('submit', async function(event) {
+    event.preventDefault();
+
+    const newProductSale = {
+        sale_id: parseInt(this.saleId.value),
+        product_id: parseInt(this.productId.value),
+        quantity: parseInt(this.quantity.value),
+        unit_price: parseFloat(this.unitPrice.value)
+    };
+
+    try {
+        const response = await fetch('/api/product-sales', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newProductSale)
+        });
+
+        if (response.ok) {
+            alert('Product added to sale successfully!');
+            this.reset();
+            loadProductSales();
+        } else {
+            const data = await response.json();
+            alert('Error adding product to sale: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error adding product to sale');
+    }
+});
+
+document.getElementById('update-product-sale-form').addEventListener('submit', async function(event) {
+    event.preventDefault();
+
+    const saleItemId = document.getElementById('update-sale-item-id').value;
+
+    const updatedProductSale = {
+        product_id: parseInt(document.getElementById('update-product-id').value),
+        quantity: parseInt(document.getElementById('update-quantity').value),
+        unit_price: parseFloat(document.getElementById('update-unit-price').value)
+    };
+
+    try {
+        const response = await fetch(`/api/product-sales/${saleItemId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedProductSale)
+        });
+
+        if (response.ok) {
+            alert('Sale item updated successfully!');
+            loadProductSales();
+        } else {
+            const data = await response.json();
+            alert('Error updating sale item: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error updating sale item');
+    }
+});
+
+async function deleteProductSale(saleItemId) {
+    if (!confirm(`Are you sure you want to delete Sale Item ID ${saleItemId}?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/product-sales/${saleItemId}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            alert('Sale item deleted successfully!');
+            loadProductSales();
+        } else {
+            const data = await response.json();
+            alert('Error deleting sale item: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error deleting sale item');
+    }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Store Database - Team 24</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .header {
+            background: #667eea;
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .links {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .links h2 {
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .links ul {
+            list-style: none;
+            padding: 0;
+        }
+        .links li {
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .links a {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 18px;
+        }
+        .links a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Game Store Database</h1>
+        <p>Database interface to assist a small brick and mortar game store</p>
+        <form action="/reset" method="POST" style="display: inline;" onsubmit="return confirm('Reset all database tables and data?');">
+            <button type="submit" style="background: #ff6b6b; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px;">Reset Database</button>
+        </form>
+    </div>
+
+    <div class="links">
+        <h2>Database Management Pages</h2>
+        <ul>
+            <li><a href="products.html">Manage Products</a> - Browse, add, update, and delete products</li>
+            <li><a href="customers.html">Manage Customers</a> - Maintain customer information and rewards</li>
+            <li><a href="employees.html">Manage Employees</a> - Add and update employee information</li>
+            <li><a href="sales.html">Manage Sales</a> - Record and view sales transactions</li>
+            <li><a href="product-sales.html">Sale Line Items</a> - Manage individual products in sales</li>
+        </ul>
+    </div>
+</body>
+</html>

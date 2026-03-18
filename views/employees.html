@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Manage Employees - Game Store</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="nav">
+        <a href="index.html">Home</a>
+        <a href="products.html">Products</a>
+        <a href="customers.html">Customers</a>
+        <a href="employees.html">Employees</a>
+        <a href="sales.html">Sales</a>
+        <a href="product-sales.html">Sale Items</a>
+        <form action="/reset" method="POST" class="reset-form" onsubmit="return confirm('Reset all database tables and data?');">
+            <button type="submit" class="reset-btn">Reset Database</button>
+        </form>
+    </div>
+
+    <h1>Manage Employees</h1>
+
+    <h2>Add New Employee</h2>
+    <form id="add-employee-form">
+        <label>First Name: <input type="text" name="firstName" required></label><br>
+        <label>Last Name: <input type="text" name="lastName" required></label><br>
+        <label>Role: 
+            <select name="role">
+                <option value="">-- Select Role --</option>
+                <option value="Cashier">Cashier</option>
+                <option value="Stocker">Stocker</option>
+                <option value="Manager">Manager</option>
+                <option value="Supervisor">Supervisor</option>
+                <option value="Other">Other</option>
+            </select>
+        </label><br>
+        <button type="submit">Add Employee</button>
+    </form>
+
+    <h2>Update Employee</h2>
+    <form id="update-employee-form">
+        <label>Employee ID: <input type="number" id="update-employee-id" required onchange="loadEmployeeById()"></label><br>
+        <label>First Name: <input type="text" id="update-first-name" required></label><br>
+        <label>Last Name: <input type="text" id="update-last-name" required></label><br>
+        <label>Role: 
+            <select id="update-role">
+                <option value="">-- Select Role --</option>
+                <option value="Cashier">Cashier</option>
+                <option value="Stocker">Stocker</option>
+                <option value="Manager">Manager</option>
+                <option value="Supervisor">Supervisor</option>
+                <option value="Other">Other</option>
+            </select>
+        </label><br>
+        <button type="submit">Update Employee</button>
+    </form>
+
+    <h2>All Employees</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Role</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td colspan="5" style="text-align: center;">Loading employees...</td>
+            </tr>
+        </tbody>
+    </table>
+
+<script>
+let allEmployees = [];
+
+window.addEventListener('DOMContentLoaded', async function() {
+    loadEmployees();
+});
+
+async function loadEmployees() {
+    try {
+        const response = await fetch('/api/employees');
+        const employees = await response.json();
+        allEmployees = employees;
+        const tbody = document.querySelector('table tbody');
+        
+        tbody.innerHTML = '';
+        
+        if (employees.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No employees. Click RESET.</td></tr>';
+            return;
+        }
+        
+        employees.forEach(employee => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${employee.employee_ID}</td>
+                <td>${employee.first_name}</td>
+                <td>${employee.last_name}</td>
+                <td>${employee.role || 'N/A'}</td>
+                <td>
+                    <button onclick="updateForm(${employee.employee_ID}, '${employee.first_name.replace(/'/g, "\\'")}', '${employee.last_name.replace(/'/g, "\\'")}', '${employee.role || ''}')">Edit</button> 
+                    <button onclick="deleteEmployee(${employee.employee_ID})">Delete</button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    } catch (error) {
+        console.error('Error:', error);
+        const tbody = document.querySelector('table tbody');
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: red;">Error loading employees</td></tr>';
+    }
+}
+
+async function loadEmployeeById() {
+    const employeeId = parseInt(document.getElementById('update-employee-id').value);
+    
+    if (!employeeId || isNaN(employeeId)) {
+        return;
+    }
+    
+    let employee = allEmployees.find(e => e.employee_ID === employeeId);
+    
+    if (!employee) {
+        try {
+            const response = await fetch('/api/employees');
+            const employees = await response.json();
+            allEmployees = employees;
+            employee = employees.find(e => e.employee_ID === employeeId);
+        } catch (error) {
+            console.error('Error fetching employees:', error);
+            alert('Error loading employee data');
+            return;
+        }
+    }
+    
+    if (employee) {
+        updateForm(
+            employee.employee_ID,
+            employee.first_name,
+            employee.last_name,
+            employee.role || ''
+        );
+    } else {
+        alert(`Employee ID ${employeeId} not found`);
+        document.getElementById('update-first-name').value = '';
+        document.getElementById('update-last-name').value = '';
+        document.getElementById('update-role').value = '';
+    }
+}
+
+function updateForm(employeeId, firstName, lastName, role) {
+    document.getElementById('update-employee-id').value = employeeId;
+    document.getElementById('update-first-name').value = firstName;
+    document.getElementById('update-last-name').value = lastName;
+    document.getElementById('update-role').value = role;
+    document.getElementById('update-employee-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+document.getElementById('add-employee-form').addEventListener('submit', async function(event) {
+    event.preventDefault();
+
+    const newEmployee = {
+        first_name: this.firstName.value,
+        last_name: this.lastName.value,
+        role: this.role.value || null
+    };
+
+    try {
+        const response = await fetch('/api/employees', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newEmployee)
+        });
+
+        if (response.ok) {
+            alert('Employee added successfully!');
+            this.reset();
+            loadEmployees();
+        } else {
+            const data = await response.json();
+            alert('Error adding employee: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error adding employee');
+    }
+});
+
+document.getElementById('update-employee-form').addEventListener('submit', async function(event) {
+    event.preventDefault();
+
+    const employeeId = document.getElementById('update-employee-id').value;
+
+    const updatedEmployee = {
+        first_name: document.getElementById('update-first-name').value,
+        last_name: document.getElementById('update-last-name').value,
+        role: document.getElementById('update-role').value || null
+    };
+
+    try {
+        const response = await fetch(`/api/employees/${employeeId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedEmployee)
+        });
+
+        if (response.ok) {
+            alert('Employee updated successfully!');
+            loadEmployees();
+        } else {
+            const data = await response.json();
+            alert('Error updating employee: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error updating employee');
+    }
+});
+
+async function deleteEmployee(employeeId) {
+    if (!confirm(`Are you sure you want to delete Employee ID ${employeeId}?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/employees/${employeeId}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            alert('Employee deleted successfully!');
+            loadEmployees();
+        } else {
+            const data = await response.json();
+            alert('Error deleting employee: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error deleting employee');
+    }
+}
+</script>
+</body>
+</html>

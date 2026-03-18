@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Manage Sales - Game Store</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="nav">
+        <a href="index.html">Home</a>
+        <a href="products.html">Products</a>
+        <a href="customers.html">Customers</a>
+        <a href="employees.html">Employees</a>
+        <a href="sales.html">Sales</a>
+        <a href="product-sales.html">Sale Items</a>
+        <form action="/reset" method="POST" class="reset-form" onsubmit="return confirm('Reset all database tables and data?');">
+            <button type="submit" class="reset-btn">Reset Database</button>
+        </form>
+    </div>
+
+    <h1>Manage Sales</h1>
+
+    <h2>Record New Sale</h2>
+    <form id="add-sale-form">
+        <label>Sale Date: <input type="datetime-local" name="saleDate" required></label><br>
+        <label>Employee: 
+            <select name="employeeId" required>
+                <option value="">Loading employees...</option>
+            </select>
+        </label><br>
+        <label>Customer (Optional): 
+            <select name="customerId">
+                <option value="">Walk-in Customer (No Rewards)</option>
+            </select>
+        </label><br>
+        <label>Total Price: <input type="number" name="totalPrice" step="0.01" min="0" required></label><br>
+        <label>Rewards Redeemed: <input type="number" name="rewardsRedeemed" step="0.01" min="0" value="0"></label><br>
+        <button type="submit">Record Sale</button>
+    </form>
+
+    <h2>Recent Sales</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Sale ID</th>
+                <th>Date</th>
+                <th>Customer</th>
+                <th>Employee</th>
+                <th>Total</th>
+                <th>Rewards Earned</th>
+                <th>Rewards Redeemed</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td colspan="8" style="text-align: center;">Loading sales...</td>
+            </tr>
+        </tbody>
+    </table>
+
+<script>
+window.addEventListener('DOMContentLoaded', async function() {
+    loadSales();
+    loadEmployeesDropdown();
+    loadCustomersDropdown();
+});
+
+async function loadSales() {
+    try {
+        const response = await fetch('/api/sales');
+        const sales = await response.json();
+        const tbody = document.querySelector('table tbody');
+        
+        tbody.innerHTML = '';
+        
+        if (sales.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No sales. Click RESET.</td></tr>';
+        } else {
+            sales.forEach(sale => {
+                const row = document.createElement('tr');
+                const saleDate = new Date(sale.sale_date).toLocaleString();
+                const rewardsEarned = sale.rewards_earned !== null ? `$${parseFloat(sale.rewards_earned).toFixed(2)}` : 'N/A';
+                const rewardsRedeemed = sale.rewards_redeemed !== null ? `$${parseFloat(sale.rewards_redeemed).toFixed(2)}` : 'N/A';
+                
+                row.innerHTML = `
+                    <td>${sale.sale_ID}</td>
+                    <td>${saleDate}</td>
+                    <td>${sale.customer_name}</td>
+                    <td>${sale.employee_name}</td>
+                    <td>$${parseFloat(sale.total_price).toFixed(2)}</td>
+                    <td>${rewardsEarned}</td>
+                    <td>${rewardsRedeemed}</td>
+                    <td>
+                        <button onclick="deleteSale(${sale.sale_ID})">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        const tbody = document.querySelector('table tbody');
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: red;">Error loading sales</td></tr>';
+    }
+}
+
+async function loadEmployeesDropdown() {
+    try {
+        const response = await fetch('/api/employees');
+        const employees = await response.json();
+        const employeeSelect = document.querySelector('select[name="employeeId"]');
+        
+        employeeSelect.innerHTML = '<option value="">-- Select Employee --</option>';
+        employees.forEach(emp => {
+            const option = document.createElement('option');
+            option.value = emp.employee_ID;
+            option.textContent = `${emp.first_name} ${emp.last_name}`;
+            employeeSelect.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading employees:', error);
+    }
+}
+
+async function loadCustomersDropdown() {
+    try {
+        const response = await fetch('/api/customers');
+        const customers = await response.json();
+        const customerSelect = document.querySelector('select[name="customerId"]');
+        
+        customers.forEach(cust => {
+            const option = document.createElement('option');
+            option.value = cust.customer_ID;
+            const name = `${cust.first_name || ''} ${cust.last_name || ''}`.trim() || `Customer #${cust.customer_ID}`;
+            option.textContent = name;
+            customerSelect.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading customers:', error);
+    }
+}
+
+// Add new sale
+document.getElementById('add-sale-form').addEventListener('submit', async function(event) {
+    event.preventDefault();
+
+    const totalPrice = parseFloat(this.totalPrice.value);
+    const customerId = this.customerId.value || null;
+    const rewardsRedeemed = parseFloat(this.rewardsRedeemed.value) || 0;
+    
+    // Calculate rewards earned (10% of total if customer exists)
+    const rewardsEarned = customerId ? (totalPrice * 0.10) : null;
+
+    const newSale = {
+        sale_date: this.saleDate.value,
+        total_price: totalPrice,
+        customer_id: customerId,
+        employee_id: parseInt(this.employeeId.value),
+        rewards_earned: rewardsEarned,
+        rewards_redeemed: customerId ? rewardsRedeemed : null
+    };
+
+    try {
+        const response = await fetch('/api/sales', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newSale)
+        });
+
+        if (response.ok) {
+            alert('Sale recorded successfully!');
+            this.reset();
+            loadSales();
+        } else {
+            const data = await response.json();
+            alert('Error recording sale: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error recording sale');
+    }
+});
+
+// Delete sale
+async function deleteSale(saleId) {
+    if (!confirm(`Are you sure you want to delete Sale ID ${saleId}? This will also delete all associated product sale items.`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/sales/${saleId}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            alert('Sale deleted successfully!');
+            loadSales();
+        } else {
+            const data = await response.json();
+            alert('Error deleting sale: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error deleting sale');
+    }
+}
+</script>
+</body>
+</html>
