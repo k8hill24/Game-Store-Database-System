@@ -9,7 +9,7 @@ const pool = mysql.createPool({
     host: 'classmysql.engr.oregonstate.edu',
     user: '',
     password: '',
-    database: 'cs340_wuiv'
+    database: 'Game_Store'
 }).promise();
 
 // Export it for use in our application
