@@ -1,0 +1,20 @@
+{
+  "name": "game-store-database",
+  "version": "1.0.0",
+  "description": "Game Store Database Management System - CS 340 Project Step 3",
+  "main": "app.js",
+  "scripts": {
+    "development": "npx nodemon app.js",
+    "production": "npx forever start app.js",
+    "stop_production": "npx forever stop app.js"
+  },
+  "keywords": ["database", "mysql", "express", "game-store"],
+  "author": "Team 24 - Ivan Wu and Kaitlyn Hill",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.21.2",
+    "forever": "^4.0.3",
+    "mysql2": "^3.12.0",
+    "nodemon": "^3.1.9"
+  }
+}
